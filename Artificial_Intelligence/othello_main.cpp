@@ -1,6 +1,6 @@
 #include "othello.h"
 
-int main(char** argv, int argc) {
+int main(int argc, char **argv) {
   boolean ourTurn;
   int** board = new int[BOARD_SIZE][BOARD_SIZE]; //NOTE TO SELF: NEEDS TO BE DELETED/FREED
   Scanner in = new Scanner(System.in);
