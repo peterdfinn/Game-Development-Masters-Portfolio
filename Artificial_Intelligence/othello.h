@@ -2,7 +2,8 @@
 #include <climits>
 #include <string>
 #include <iostream>
-#include <cstdlib>
+#include <queue>
+#include <array>
 
 #define BOARD_SIZE 8
 
@@ -16,7 +17,7 @@ using namespace std;
 class TreeNode {
 public:
   int** board; // a BOARD_SIZE-by-BOARD_SIZE square containing 0s, 1s, and 2s
-  TreeNode parent; // the TreeNode object that represented the state of the game
+  TreeNode* parent; // the TreeNode object that represented the state of the game
                    // before this move would be made
   int depth; // the depth in the decision tree at which this node resides.
   int player; // the player who would be taking their turn
@@ -26,7 +27,7 @@ public:
                                      // could be made after this one
 
 
-  TreeNode(int** b, TreeNode par, int d, int plr) {
+  TreeNode(int** b, TreeNode* par, int d, int plr) {
     board = b;
     parent = par;
     depth = d;
@@ -49,7 +50,7 @@ public:
   static int scoreOfBoard(TreeNode*, int, int, int);
   static void doFlip(int**, int, int, int, int, int);
   static int** makeMove(int**, int, int, int);
-  static int howManyPiecesFlipped(int, int, int, int);
+  static int howManyPiecesFlipped(int, int, int**, int);
   static int countFlips(int**, int, int, int, int, int);
 
 private:

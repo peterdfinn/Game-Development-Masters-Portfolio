@@ -7,7 +7,7 @@ TreeNode* Othello::findBestNeighbor(TreeNode* node, int player) {
     int score = Othello::scoreOfBoard(*n, player, 0, INT_MAX);
     if (score > maxScore) {
       maxScore = score;
-      bestMove = n;
+      bestMove = *n;
     }
   }
   return bestMove;
@@ -109,7 +109,11 @@ void Othello::doFlip(int** state, int player, int X, int Y, int dirX, int dirY) 
 }
 
 int** Othello::makeMove(int** board, int player, int X, int Y) {
-  int** modifiedBoard = new int[BOARD_SIZE][BOARD_SIZE]
+  int** modifiedBoard = new int*[BOARD_SIZE];
+  for (int i = 0; i < BOARD_SIZE; ++i) {
+    modifiedBoard[i] = new int[BOARD_SIZE];
+  }
+  
   for (int i = 0; i < BOARD_SIZE; ++i) {
     for (int j = 0; j < BOARD_SIZE; ++j) {
       modifiedBoard[i][j] = board[i][j];
