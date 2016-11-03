@@ -19,17 +19,17 @@ bool Othello::canFlip(int** state, int player, int X, int Y, int dirX, int dirY)
 	 (X + dirX >= 0) &&
 	 (Y + dirY < 8) &&
 	 (Y + dirY >= 0) &&
-	 (state[X+dirX][Y+dirY] == 3 - player)) {
-    X = X+dirX;
-    Y = Y+dirY;
+	 (state[X + dirX][Y + dirY] == 3 - player)) {
+    X += dirX;
+    Y += dirY;
     capture = true;
   }
-  if (!capture ) return false;
+  if (!capture) return false;
   if ((X + dirX < 8) &&
       (X + dirX >= 0) &&
       (Y + dirY < 8) &&
       (Y + dirY >= 0) &&
-      (state[X+dirX][Y+dirY] == player)) {
+      (state[X + dirX][Y + dirY] == player)) {
     return true;
   }
   else return false;
@@ -37,10 +37,9 @@ bool Othello::canFlip(int** state, int player, int X, int Y, int dirX, int dirY)
 
 bool Othello::isLegal(int** state, int player, int X, int Y) {
   if (state[X][Y] != 0) return false;
-  for (int i = 0; i <= 2; ++i) {
-    for (int j = 0; j <= 2; ++j) {
-      if (((i != 0) || (j != 0)) &&
-	  Othello::canFlip(state, player, X, Y, i, j))
+  for (int i = -1; i <= 1; ++i) {
+    for (int j = -1; j <= 1; ++j) {
+      if (((i != 0) || (j != 0)) && Othello::canFlip(state, player, X, Y, i, j))
 	return true;
     }
   }
@@ -55,47 +54,47 @@ int Othello::scoreOfBoard(TreeNode* node, int player, int alpha, int beta) {
   if (node->children.empty())
     {
       for (int i = 0; i < 8; ++i) {
-	  for (int j = 0; j < 8; ++j) {
-	      if (state[i][j] == 0)
-		continue;
-	      if (isCorner(i, j)) {
-		  if (state[i][j] == player)
-		    playerScore += 5;
-		  else if (state[i][j] == otherPlayer)
-		    otherPlayerScore += 5;
-		}
-	      else if (isNextToCorner(i, j)) {
-		  if (state[i][j] == player)
-		    playerScore += 2;
-		  else if (state[i][j] == otherPlayer)
-		    otherPlayerScore += 2;
-		}
-	      else if (isSide(i, j)) {
-		  if (state[i][j] == player)
-		    playerScore += 3;
-		  else if (state[i][j] == otherPlayer)
-		    otherPlayerScore += 3;
-		}
-	      else {
-		  if (state[i][j] == player)
-		    playerScore += 1;
-		  else if (state[i][j] == otherPlayer)
-		    otherPlayerScore += 1;
-		}
-	    }
+	for (int j = 0; j < 8; ++j) {
+	  if (state[i][j] == 0)
+	    continue;
+	  if (isCorner(i, j)) {
+	    if (state[i][j] == player)
+	      playerScore += 5;
+	    else if (state[i][j] == otherPlayer)
+	      otherPlayerScore += 5;
+	  }
+	  else if (isNextToCorner(i, j)) {
+	    if (state[i][j] == player)
+	      playerScore += 2;
+	    else if (state[i][j] == otherPlayer)
+	      otherPlayerScore += 2;
+	  }
+	  else if (isSide(i, j)) {
+	    if (state[i][j] == player)
+	      playerScore += 3;
+	    else if (state[i][j] == otherPlayer)
+	      otherPlayerScore += 3;
+	  }
+	  else {
+	    if (state[i][j] == player)
+	      playerScore += 1;
+	    else if (state[i][j] == otherPlayer)
+	      otherPlayerScore += 1;
+	  }
 	}
+      }
       return playerScore - otherPlayerScore;
     }
   else {
-      for (auto it = node->children.begin(); it != node->children.end(); ++it) {
-	int temp = Othello::scoreOfBoard(*it, otherPlayer, alpha, beta);
-	  if (temp > alpha)
-	    alpha = temp;
-	  if (alpha >= beta)
-	    return beta;
-	}
-      return alpha;
+    for (auto it = node->children.begin(); it != node->children.end(); ++it) {
+      int temp = Othello::scoreOfBoard(*it, otherPlayer, alpha, beta);
+      if (temp > alpha)
+	alpha = temp;
+      if (alpha >= beta)
+	return beta;
     }
+    return alpha;
+  }
 }
 
 void Othello::doFlip(int** state, int player, int X, int Y, int dirX, int dirY) {

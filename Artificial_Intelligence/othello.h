@@ -4,6 +4,7 @@
 #include <iostream>
 #include <queue>
 #include <array>
+#include <iterator>
 
 #define BOARD_SIZE 8
 
@@ -15,10 +16,10 @@ using namespace std;
  * made.  Conceptually, a node represents a move that could be made in the game.
  */
 class TreeNode {
-public:
+ public:
   int** board; // a BOARD_SIZE-by-BOARD_SIZE square containing 0s, 1s, and 2s
   TreeNode* parent; // the TreeNode object that represented the state of the game
-                   // before this move would be made
+                    // before this move would be made
   int depth; // the depth in the decision tree at which this node resides.
   int player; // the player who would be taking their turn
   int x, y; // the x and y coordinates of the space that would be occupied by a
@@ -43,7 +44,7 @@ public:
  * Descriptions for the functions can be found in Othello.cpp.
  */
 class Othello {
-public:
+ public:
   static TreeNode* findBestNeighbor(TreeNode*, int);
   static bool canFlip(int**, int, int, int, int, int);
   static bool isLegal(int**, int, int, int);
@@ -53,7 +54,7 @@ public:
   static int howManyPiecesFlipped(int, int, int**, int);
   static int countFlips(int**, int, int, int, int, int);
 
-private:
+ private:
   static bool isCorner(int, int);
   static bool isNextToCorner(int, int);
   static bool isSide(int, int);

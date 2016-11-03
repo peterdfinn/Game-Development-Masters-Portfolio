@@ -1,11 +1,32 @@
 #include "othello.h"
 
+int mdain(int argc, char **argv) {
+  int** board = new int*[BOARD_SIZE];
+  for (int i = 0; i < BOARD_SIZE; ++i) {
+    board[i] = new int[BOARD_SIZE];
+    for (int j = 0; j < BOARD_SIZE; ++j) {
+      board[i][j] = 0;
+    }
+  }
+  board[3][3] = 2;
+  board[4][4] = 2;
+  board[3][4] = 1;
+  board[4][3]=1;
+
+  cout << "should be true, is " << (Othello::isLegal(board, 2, 2, 4) ? "true" : "false") << endl;
+  return 0;
+}
+
 int main(int argc, char **argv) {
 
   // Determine whether the input command is valid.
   string input_string;
-  cin >> input_string;
-  if (input_string.compare(0, 5, "game ")) {
+  char our_color;
+  int depthLimit;
+  cin >> input_string >> our_color >> depthLimit;
+  cout << "Before conditional: input_string reads: " << input_string << "!\n";
+  if (input_string.compare(0, 4, "game") != 0) {
+    cout << "input_string.compare failed\n";//DEBUG
     cout << "Invalid command\n";
     return 0;
   }
@@ -33,17 +54,17 @@ int main(int argc, char **argv) {
   board[(BOARD_SIZE / 2) - 1][BOARD_SIZE / 2] = 1;
 
   // Parse input line to determine game variables.
-  int idxOfSpace1, idxOfSpace2, idxOf0;
-  int idx;
-  for (idx = 8; input_string[idx] != ' '; ++idx);
-  idxOfSpace1 = idx;
+  //int idxOfSpace1, idxOfSpace2, idxOf0;
+  //int idx;
+  //for (idx = 8; input_string[idx] != ' '; ++idx);
+  //idxOfSpace1 = idx;
   //for (idx = idxOfSpace1 + 1; input_string[idx] != ' '; ++idx); TIME
   //idxOfSpace2 = idx; TIME
   //for (idx = idxOfSpace2 + 1; input_string[idx] != (char) 0; ++idx); TIME
   //idxOf0 = idx; TIME
   
-  string depthLimit_string = input_string.substr(7, idxOfSpace1 - 7);
-  int depthLimit = stoi(depthLimit_string);
+  //string depthLimit_string = input_string.substr(7, idxOfSpace1 - 7);
+  //int depthLimit = stoi(depthLimit_string);
 
   //string timeLimit1_string = input_string.substr(idxOfSpace1 + 1, idxOfSpace2 - idxOfSpace1 - 1); TIME
   //int timeLimit1 = atoi(timeLimit1_string); TIME
@@ -59,11 +80,11 @@ int main(int argc, char **argv) {
 		
   int player;
   bool ourTurn;
-  if (input_string[5] == 'B') {// we move first
+  if (our_color == 'B') {// we move first
     ourTurn = true;
     player = 2;
   }
-  else if (input_string[5] == 'W') {// they move first
+  else if (our_color == 'W') {// they move first
     ourTurn = false;
     player = 1;
   }
@@ -103,13 +124,15 @@ int main(int argc, char **argv) {
 
     // If it's our turn, we must...
     if (ourTurn) {
+      cout << "It's our turn!\n";
       //long startTime = System.currentTimeMillis(); TIME
       TreeNode* treeRoot = new TreeNode(board, NULL, 0, 1);
       queue.push(treeRoot);
 
       // Create tree, within constraints.
-      int counter = 0;
+      int counter;
       while (true /* within depth limit and time limit */) {
+	counter = 0;
 	if (queue.empty()) // if no more moves to be made
 	  break;
 	TreeNode* temp = queue.front(); // Consider a single move that can be made...
@@ -117,13 +140,15 @@ int main(int argc, char **argv) {
 	  break;
 	}
 	/* TIME
-	if (isTime1Limited && System.currentTimeMillis() - startTime >= ((long) (0.9 * (double) timeLimit1)))
-	  break;*/
+	   if (isTime1Limited && System.currentTimeMillis() - startTime >= ((long) (0.9 * (double) timeLimit1)))
+	   break;*/
 	queue.pop();
+	cout << "Just popped from queue, now looking for legal moves to make\n";
 	for (int i = 0; i < BOARD_SIZE; ++i) {
 	  for (int j = 0; j < BOARD_SIZE; ++j) {
-	    if (Othello::isLegal(temp->board, 1, i, j)) {
-	      TreeNode* temp2 = new TreeNode(Othello::makeMove(temp->board, 1, i, j), temp, temp->depth + 1, 3 - temp->player);
+	    if ((i == 2) && (j == 4)) cout << "isLegal = " << Othello::isLegal(temp->board, player, i, j) << endl;
+	    if (Othello::isLegal(temp->board, player, i, j)) {
+	      TreeNode* temp2 = new TreeNode(Othello::makeMove(temp->board, player, i, j), temp, temp->depth + 1, 3 - temp->player);
 	      // For each new move that can be made from the 'temp' TreeNode, add it to the queue of moves to be added to the tree, and add it to temp's list of children.
 	      // This kills two birds with one stone.
 	      temp2->x = i;
@@ -132,6 +157,7 @@ int main(int argc, char **argv) {
 	      temp->children.insert(temp2);
 	      ++counter;
 	    }
+	    cout << "After trying x=" << i << " and y=" << j << ", counter=" << counter << endl;
 	  }
 	}
       }
@@ -150,36 +176,35 @@ int main(int argc, char **argv) {
       board = Othello::makeMove(board, bestNeighbor->x, bestNeighbor->y, 1);
       ourTurn = false;
       /* TIME
-      if (System.currentTimeMillis() - startTime > timeLimit1 && isTime1Limited) {
-	int whiteCount = 0;
-	int blackCount = 0;
-	for (int i = 0; i < 8; ++i) {
-	  for (int j = 0; j < 8; ++j)
-	    {
-	      if (board[i][j] == 1) ++whiteCount;
-	      if (board[i][j] == 2) ++blackCount;
-	    }
-	}
-	System.out.printf("winner %c %d timeout\n", player == 1 ? 'B' : 'W', player == 2 ? whiteCount - blackCount : blackCount - whiteCount);
-	break;
-      }*/
+	 if (System.currentTimeMillis() - startTime > timeLimit1 && isTime1Limited) {
+	 int whiteCount = 0;
+	 int blackCount = 0;
+	 for (int i = 0; i < 8; ++i) {
+	 for (int j = 0; j < 8; ++j)
+	 {
+	 if (board[i][j] == 1) ++whiteCount;
+	 if (board[i][j] == 2) ++blackCount;
+	 }
+	 }
+	 System.out.printf("winner %c %d timeout\n", player == 1 ? 'B' : 'W', player == 2 ? whiteCount - blackCount : blackCount - whiteCount);
+	 break;
+	 }*/
     }
     else {
-      // long otherPlayerStartTime = System.currentTimeMillis(); TIME
-      cin >> input_string;
+ 
       /* TIME
-      if (System.currentTimeMillis() - otherPlayerStartTime > timeLimit1) { // Did the other player take too long?
-	int whiteCount = 0;
-	int blackCount = 0;
-	for (int i = 0; i < 8; ++i) {
-	  for (int j = 0; j < 8; ++j) {
-	    if (board[i][j] == 1) ++whiteCount;
-	    if (board[i][j] == 2) ++blackCount;
-	  }
-	}
-	System.out.printf("winner %c %d timeout\n", player == 2 ? 'B' : 'W', player == 1 ? whiteCount - blackCount : blackCount - whiteCount);
-	break;
-      }*/
+	 if (System.currentTimeMillis() - otherPlayerStartTime > timeLimit1) { // Did the other player take too long?
+	 int whiteCount = 0;
+	 int blackCount = 0;
+	 for (int i = 0; i < 8; ++i) {
+	 for (int j = 0; j < 8; ++j) {
+	 if (board[i][j] == 1) ++whiteCount;
+	 if (board[i][j] == 2) ++blackCount;
+	 }
+	 }
+	 System.out.printf("winner %c %d timeout\n", player == 2 ? 'B' : 'W', player == 1 ? whiteCount - blackCount : blackCount - whiteCount);
+	 break;
+	 }*/
       if (!input_string.compare(0, 4, "pass")) { // Did the other player pass?
 	++noAvailableMoves;
 	continue;
@@ -187,11 +212,17 @@ int main(int argc, char **argv) {
       noAvailableMoves = 0;
 
       // Now we must parse their move.
-      
+
+           // long otherPlayerStartTime = System.currentTimeMillis(); TIME
+      int X, Y;
+      cin >> X >> Y;
+      /*    
       int idxOfSpace;
       for (idxOfSpace = 0; input_string[idxOfSpace] != ' '; ++idxOfSpace);
       int X = stoi(input_string.substr(0, idxOfSpace));
       int Y = stoi(input_string.substr(idxOfSpace + 1, input_string.size() - idxOfSpace - 1));
+      */
+      
       if (!Othello::isLegal(board, 3 - player, X, Y)) {
 	int whiteCount = 0;
 	int blackCount = 0;
