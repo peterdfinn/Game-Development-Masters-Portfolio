@@ -1,168 +1,240 @@
 #include "othello.h"
 
-TreeNode* Othello::findBestNeighbor(TreeNode* node, int player) {
-  int maxScore = 0;
-  TreeNode* bestMove = NULL;
-  for (auto n = node->children.begin(); n != node->children.end(); ++n) { // for each TreeNode in node->children
-    int score = Othello::scoreOfBoard(*n, player, 0, INT_MAX);
-    if (score > maxScore) {
-      maxScore = score;
-      bestMove = *n;
-    }
-  }
-  return bestMove;
-}
+int Othello::our_color;
 
-bool Othello::canFlip(int** state, int player, int X, int Y, int dirX, int dirY) {
-  bool capture = false;
-  while ((X + dirX < 8) &&
-	 (X + dirX >= 0) &&
-	 (Y + dirY < 8) &&
-	 (Y + dirY >= 0) &&
-	 (state[X + dirX][Y + dirY] == 3 - player)) {
-    X += dirX;
-    Y += dirY;
-    capture = true;
-  }
-  if (!capture) return false;
-  if ((X + dirX < 8) &&
-      (X + dirX >= 0) &&
-      (Y + dirY < 8) &&
-      (Y + dirY >= 0) &&
-      (state[X + dirX][Y + dirY] == player)) {
-    return true;
-  }
-  else return false;
-}
-
-bool Othello::isLegal(int** state, int player, int X, int Y) {
-  if (state[X][Y] != 0) return false;
-  for (int i = -1; i <= 1; ++i) {
-    for (int j = -1; j <= 1; ++j) {
-      if (((i != 0) || (j != 0)) && Othello::canFlip(state, player, X, Y, i, j))
-	return true;
-    }
-  }
-  return false;
-}
-
-int Othello::scoreOfBoard(TreeNode* node, int player, int alpha, int beta) {
-  int** state = node->board;
-  int otherPlayer = 3 - player;
-  int playerScore = 0;
-  int otherPlayerScore = 0;
-  if (node->children.empty())
-    {
-      for (int i = 0; i < 8; ++i) {
-	for (int j = 0; j < 8; ++j) {
-	  if (state[i][j] == 0)
-	    continue;
-	  if (isCorner(i, j)) {
-	    if (state[i][j] == player)
-	      playerScore += 5;
-	    else if (state[i][j] == otherPlayer)
-	      otherPlayerScore += 5;
-	  }
-	  else if (isNextToCorner(i, j)) {
-	    if (state[i][j] == player)
-	      playerScore += 2;
-	    else if (state[i][j] == otherPlayer)
-	      otherPlayerScore += 2;
-	  }
-	  else if (isSide(i, j)) {
-	    if (state[i][j] == player)
-	      playerScore += 3;
-	    else if (state[i][j] == otherPlayer)
-	      otherPlayerScore += 3;
-	  }
-	  else {
-	    if (state[i][j] == player)
-	      playerScore += 1;
-	    else if (state[i][j] == otherPlayer)
-	      otherPlayerScore += 1;
-	  }
-	}
-      }
-      return playerScore - otherPlayerScore;
-    }
-  else {
-    for (auto it = node->children.begin(); it != node->children.end(); ++it) {
-      int temp = Othello::scoreOfBoard(*it, otherPlayer, alpha, beta);
-      if (temp > alpha)
-	alpha = temp;
-      if (alpha >= beta)
-	return beta;
-    }
-    return alpha;
-  }
-}
-
-void Othello::doFlip(int** state, int player, int X, int Y, int dirX, int dirY) {
-  while ((X + dirX < BOARD_SIZE) && (X + dirX >= 0) &&
-	 (Y + dirY < BOARD_SIZE) && (Y + dirY >= 0) &&
-	 (state[X + dirX][Y + dirY] == 3-player)) {
-    X += dirX;
-    Y += dirY;
-    state[X][Y] = player;
-  }
-}
-
-int** Othello::makeMove(int** board, int player, int X, int Y) {
-  int** modifiedBoard = new int*[BOARD_SIZE];
-  for (int i = 0; i < BOARD_SIZE; ++i) {
-    modifiedBoard[i] = new int[BOARD_SIZE];
-  }
+/*
+ * Function: take_turn
+ *
+ * Description: This is the primary function that handles turn-taking for the
+ *              Othello game.
+ *
+ * Inputs:
+ *  - color: The color of the player whose turn it is.  1 is white; 2 is black.
+ *  - game_board: A pointer to the GameBoard object on which to make a move.
+ *  - depth_limit: The maximum allowable depth of the decision tree.
+ *
+ * Outputs:
+ *  - forfeit: A pointer to a bool that indicates whether the user made an
+ *             illegal move.  If this happens, the program declares victory by
+ *             forfeit.
+ *
+ * Return value: True if the player passes or has no legal moves; false
+ *               otherwise.
+ */
+bool Othello::take_turn(int color, GameBoard *game_board, int depth_limit,
+			bool* forfeit) {
   
+  *forfeit = false;
+
+  if (our_color == color) {
+    // If this is us, we create a TreeNode for the current board state and fill
+    // out the tree...
+    TreeNode* tree_root = new TreeNode(new GameBoard(*game_board), 0, color);
+    create_decision_tree(tree_root, depth_limit);
+
+    // ...and we either pass because we have no legal moves...
+    if (tree_root->no_children()) {
+      cout << "I pass!\n";
+      delete tree_root;
+      return true;
+    }
+
+    // ...or we perform alpha-beta pruning on the tree and find the best turn to
+    // take.
+    int best_value = alpha_beta(tree_root, INT_MIN, INT_MAX);
+    TreeNode* best_move;
+    for (auto child = tree_root->get_children()->begin();
+	 child != tree_root->get_children()->end(); ++child) {
+      if ((*child)->get_value() == best_value) {
+	best_move = *child;
+	break;
+      }
+    }
+
+    // Once we've found the best move, we alter the main game board accordingly.
+    bool legal_move = game_board->place_piece(color, best_move->get_x(),
+					      best_move->get_y(), true);
+    if (legal_move) {
+      cout << "I placed a " << (color == 2 ? "black" : "white") <<
+	" piece at (" << best_move->get_x() << ", " << best_move->get_y() <<
+	")!\n";
+    }
+    else {
+      cout << "I pass!\n";
+    }
+    delete tree_root;
+  }
+  else {
+    // If this is not us, we read input from cin and adjust the main game board
+    // on behalf of the user, unless the user passes or makes an illegal move.
+    int x, y;
+    cin >> x >> y;
+    if ((x < 0) || (x >= BOARD_SIZE) || (y < 0) || (y >= BOARD_SIZE)) {
+      return true;
+    }
+    if (!game_board->is_legal(color, x, y)) {
+      *forfeit = true;
+      return true;
+    }
+    game_board->place_piece(color, x, y, true);
+  }
+
+  return false;
+  
+}
+
+/*
+ * Function: create_decision_tree
+ *
+ * Description: This function searches for legal moves to make from
+ *              root->game_board and creates child TreeNodes for root, provided
+ *              depth_limit is not reached.
+ *
+ * Inputs:
+ *  - root: A pointer to a TreeNode object that will be considered the root of
+ *          the decision tree being created.
+ *  - depth_limit: If positive, this is the maximum allowable depth of the tree.
+ *                 Otherwise, signifies that there is no maximum depth.
+ */
+void Othello::create_decision_tree(TreeNode* root, int depth_limit) {
+
+  // No maximum depth limit.
+  if (depth_limit <= 0) depth_limit = INT_MAX;
+
+  // No more levels allowed in the currently forming tree.
+  if (root->get_depth() >= depth_limit) return;
+
+  // For each space on the board, if it's a legal move, we create a child for it
+  // and recursively call create_decision_tree to fill out its subtree.
   for (int i = 0; i < BOARD_SIZE; ++i) {
     for (int j = 0; j < BOARD_SIZE; ++j) {
-      modifiedBoard[i][j] = board[i][j];
+      if (root->get_board()->is_legal(root->get_color(), i, j)) {
+	GameBoard* child_board = new GameBoard(*(root->get_board()));
+	child_board->place_piece(root->get_color(), i, j, true);
+	TreeNode* child = new TreeNode(child_board, root->get_depth() + 1,
+				       3 - root->get_color(), i, j);
+	root->add_to_children(child);
+	create_decision_tree(child, depth_limit);
+      }
     }
   }
-  if (modifiedBoard[X][Y] != 0) {
-    cout << "Illegal move\n";
+  return;
+}
+
+/*
+ * Function: alpha_beta
+ *
+ * Description: This is the main decision-making function employed by the
+ *              program.  It takes the root of a decision tree, which it assumes
+ *              to be as full as is allowed, and performs alpha-beta pruning to
+ *              find the best possible heuristic score for the player making the
+ *              decision at the root of the tree.
+ *
+ * Inputs:
+ *  - root: This is a pointer to the root of the tree being evaluated.
+ *  - alpha: The best possible heuristic score for the black player found thus
+ *           far.
+ *  - beta: The best possible heuristic score for the white player found thus
+ *          far.
+ *
+ * Return value: The heuristic score that would result from the best move by the
+ *               player.
+ */
+int Othello::alpha_beta(TreeNode* root, int alpha, int beta) {
+  if (root->no_children()) {
+    root->set_value(root->get_board()->weighted_score_of_board());
+    return root->get_value();
   }
-  modifiedBoard[X][Y] = player;
-  for (int i = 0; i <= 2; i++)
-    for (int j = 0; j <= 2; j++)
-      if (((i != 0) || (j != 0)) && Othello::canFlip(modifiedBoard, player, X, Y, i, j))
-	Othello::doFlip(modifiedBoard, player, X, Y, i, j);
 
-  return modifiedBoard;
-}
-
-int Othello::howManyPiecesFlipped(int X, int Y, int** state, int player) {
-  int flips = 0;
-  if (X < 0) return 0; /* pass move */
-  if (state[X][Y] != 0) {
-    cout << "Illegal move\n";
+  if (root->get_color() == 2) {
+    int value = INT_MIN;
+    for (auto child = root->get_children()->begin();
+	 child != root->get_children()->end(); ++child) {
+      value = max(value, alpha_beta(*child, alpha, beta));
+      alpha = max(alpha, value);
+      if (beta <= alpha) break;
+    }
+    root->set_value(value);
+    return value;
   }
-  state[X][Y] = player;
-  for (int i = 0; i <= 2; ++i)
-    for (int j = 0; j <= 2; ++j)
-      if ((i!=0 || j!=0) && Othello::canFlip(state, player, X, Y, i, j))
-	flips += Othello::countFlips(state, player, X, Y, i, j);
-  return flips;
+  else {
+    int value = INT_MAX;
+    for (auto child = root->get_children()->begin();
+	 child != root->get_children()->end(); ++child) {
+      value = min(value, alpha_beta(*child, alpha, beta));
+      beta = min(beta, value);
+      if (beta <= alpha) break;
+    }
+    root->set_value(value);
+    return value;
+  } 
 }
 
-int Othello::countFlips(int** state, int player, int X, int Y, int dirX, int dirY) {
-  int count = 0;
-  while ((X + dirX < 8) && (X + dirX >= 0) && (Y + dirY < 8) && (Y + dirY >= 0) && (state[X + dirX][Y + dirY] == 3 - player)) {
-    X += dirX;
-    Y += dirY;
-    ++count;
-  }
-  return count;
+/*
+ * Function: set_color
+ *
+ * Description: Changes Othello::our_color, which is the color being used by the
+ *              program.
+ *
+ * Inputs:
+ *  - c: The new value to be stored in Othello::our_color.
+ */
+void Othello::set_color(int c) {our_color = c;}
+
+/*
+ * Function: is_corner
+ *
+ * Description: This function discerns whether a given space on a board is a
+ *              corner space.
+ *
+ * Inputs:
+ *  - x: The x-coordinate of the space in question.
+ *  - y: The y-coordinate of the space in question.
+ *
+ * Return value: True if the space is a corner space; false otherwise.
+ */
+bool Othello::is_corner(int x, int y) {
+  return ((x == 0) || (x == BOARD_SIZE - 1)) &&
+    ((y == 0) || (y == BOARD_SIZE - 1));
 }
 
-bool Othello::isCorner(int x, int y) {
-  return ((x == 0) || (x == BOARD_SIZE - 1)) && ((y == 0) || (y == BOARD_SIZE - 1));
+/*
+ * Function: is_next_to_corner
+ *
+ * Description: This function discerns whether a given space on a board is
+ *              adjacent to a corner space, not counting diagonally adjacent
+ *              spaces.  For example, on an 8 by 8 board, (0, 1), (1, 0),
+ *              (0, 6), (1, 7), (6, 7), (7, 6), (6, 0), and (7, 1) would be the
+ *              only spaces that would return true.
+ *
+ * Inputs:
+ *  - x: The x-coordinate of the space in question.
+ *  - y: The y-coordinate of the space in question.
+ *
+ * Return value: True if the space is adjacent to a corner space; false
+ *               otherwise.
+ */
+bool Othello::is_next_to_corner(int x, int y) {
+  return ((x <= 1) || (x >= BOARD_SIZE - 2)) &&
+    ((y <= 1) || (y >= BOARD_SIZE - 2)) &&
+    !is_corner(x, y) && is_side(x, y);
 }
 
-bool Othello::isNextToCorner(int x, int y) {
-  return ((x <= 1) || (x >= BOARD_SIZE - 2)) && ((y <= 1) || (y >= BOARD_SIZE - 2)) && !isCorner(x, y);
-}
-
-bool Othello::isSide(int x, int y) {
-  return (((x == 0) || (x == BOARD_SIZE - 1)) && (y >= 2) && (y <= BOARD_SIZE - 3)) ||
-    (((y == 0) || (y == BOARD_SIZE - 1)) && (x >= 2) && (x <= BOARD_SIZE - 3));
+/*
+ * Function: is_side
+ *
+ * Description: This function discerns whether a given space on a board is a
+ *              side space.
+ *
+ * Inputs:
+ *  - x: The x-coordinate of the space in question.
+ *  - y: The y-coordinate of the space in question.
+ *
+ * Return value: True if the space is a side space; false otherwise.
+ */
+bool Othello::is_side(int x, int y) {
+  return (((x == 0) || (x == BOARD_SIZE - 1)) &&
+	  (y >= 2) && (y <= BOARD_SIZE - 3)) ||
+    (((y == 0) || (y == BOARD_SIZE - 1)) &&
+     (x >= 2) && (x <= BOARD_SIZE - 3));
 }
