@@ -2,8 +2,6 @@
 #include <climits>
 #include <string>
 #include <iostream>
-//#include <queue>
-//#include <array>
 #include <iterator>
 
 #define BOARD_SIZE 8
